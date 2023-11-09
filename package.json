@@ -52,8 +52,8 @@
     "typescript": "5.2.2"
   },
   "resolutions": {
-    "@types/react": "17.0.69",
-    "@types/react-dom": "17.0.22",
+    "@types/react": "17.0.70",
+    "@types/react-dom": "17.0.23",
     "wrap-ansi": "7.0.0"
   },
   "prettier": "@spotify/prettier-config",
