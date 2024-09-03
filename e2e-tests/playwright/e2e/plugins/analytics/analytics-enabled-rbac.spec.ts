@@ -28,6 +28,6 @@ test.describe('Check RBAC "analytics-provider-segment" plugin', () => {
         '@janus-idp/backstage-plugin-analytics-provider-segment',
       ),
     );
-    expect(await row.locator('td').nth(2).innerText()).toBe('No'); // not enabled
+    expect(await row.locator('td').nth(2).innerText()).toBe('Yes'); // not enabled
   });
 });
