@@ -78,6 +78,10 @@ RUN apt-get update -y && \
 # Install yq
 RUN wget https://github.com/mikefarah/yq/releases/download/v4.43.1/yq_linux_amd64.tar.gz -O - | tar xz && mv yq_linux_amd64 /usr/bin/yq
 
+# Install podman
+RUN apt-get update -y && \
+apt-get install -y podman
+
 # Set environment variables to make Go work correctly
 ENV GOPATH /go
 ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH

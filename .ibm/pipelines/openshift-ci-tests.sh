@@ -395,7 +395,26 @@ main() {
   fi
 
   install_oc
-  oc login --token="${K8S_CLUSTER_TOKEN}" --server="${K8S_CLUSTER_URL}" --insecure-skip-tls-verify
+
+  if [[ "$JOB_NAME" == *aks* ]]; then
+    podman run -d --rm --name create-aks \
+      -v ${DIR}:/workspace:z \
+      -e ARM_TENANT_ID=${ARM_TENANT_ID} \
+      -e ARM_SUBSCRIPTION_ID=${ARM_SUBSCRIPTION_ID} \
+      -e ARM_CLIENT_ID=${ARM_CLIENT_ID} \
+      -e ARM_CLIENT_SECRET=${ARM_CLIENT_SECRET} \
+      quay.io/rhqp/mapt:v0.7.0-dev azure \
+          aks create \
+          --project-name ${MAPT_AKS_PROJECT_NAME} \
+          --backed-url "file:///workspace" \
+          --conn-details-output "/workspace" \
+          --enable-app-routing \
+          --spot
+    podman logs -f create-aks
+    export KUBECONFIG="kubeconfig"
+  else
+    oc login --token="${K8S_CLUSTER_TOKEN}" --server="${K8S_CLUSTER_URL}" --insecure-skip-tls-verify
+  fi
   echo "OCP version: $(oc version)"
 
   API_SERVER_URL=$(oc whoami --show-server)
@@ -416,6 +435,20 @@ main() {
   else
     check_and_test "${RELEASE_NAME}" "${NAME_SPACE}"
     check_and_test "${RELEASE_NAME_RBAC}" "${NAME_SPACE_RBAC}"
+  fi
+
+  if [[ "$JOB_NAME" == *aks* ]]; then
+    podman run -d --rm --name destroy-aks \
+    -v ${DIR}:/workspace:z \
+    -e ARM_TENANT_ID=${ARM_TENANT_ID} \
+    -e ARM_SUBSCRIPTION_ID=${ARM_SUBSCRIPTION_ID} \
+    -e ARM_CLIENT_ID=${ARM_CLIENT_ID} \
+    -e ARM_CLIENT_SECRET=${ARM_CLIENT_SECRET} \
+    quay.io/rhqp/mapt:v0.7.0-dev azure \
+        aks destroy \
+        --project-name ${MAPT_AKS_PROJECT_NAME} \
+        --backed-url "file:///workspace" 
+    podman logs -f destroy-aks
   fi
   exit "${OVERALL_RESULT}"
 }

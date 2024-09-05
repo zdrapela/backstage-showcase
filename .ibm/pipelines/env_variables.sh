@@ -64,4 +64,10 @@ NEXUS_HOSTNAME=$(cat /tmp/secrets/NEXUS_HOSTNAME)
 REDIS_TEMP_USER=temp
 REDIS_TEMP_PASS=test123
 
+MAPT_AKS_PROJECT_NAME='rhdh-ci-aks'
+ARM_TENANT_ID=$(cat /tmp/secrets/ARM_TENANT_ID)
+ARM_SUBSCRIPTION_ID=$(cat /tmp/secrets/ARM_SUBSCRIPTION_ID)
+ARM_CLIENT_ID=$(cat /tmp/secrets/ARM_CLIENT_ID)
+ARM_CLIENT_SECRET=$(cat /tmp/secrets/ARM_CLIENT_SECRET)
+
 set +a  # Stop automatically exporting variables
