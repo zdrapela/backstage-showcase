@@ -13,6 +13,9 @@ JOB_NAME="periodic-aks"
 
 cleanup() {
   echo "Cleaning up before exiting"
+  if [[ "$JOB_NAME" == *aks* ]]; then
+    mapt_destroy_aks_cluster
+  fi
   rm -rf ~/tmpbin
 }
 
@@ -369,6 +372,36 @@ initiate_aks_deployment() {
   helm upgrade -i "${RELEASE_NAME}" -n "${NAME_SPACE_AKS}" "${HELM_REPO_NAME}/${HELM_IMAGE_NAME}" --version "${CHART_VERSION}" -f "${DIR}/value_files/${HELM_CHART_VALUE_FILE_NAME}" -f "${DIR}/value_files/${HELM_CHART_AKS_DIFF_VALUE_FILE_NAME}" --set global.host="${K8S_CLUSTER_ROUTER_BASE}" --set upstream.backstage.image.repository="${QUAY_REPO}" --set upstream.backstage.image.tag="${TAG_NAME}"
 }
 
+mapt_create_aks_cluster() {
+  podman run -d --rm --platform linux/amd64 --name create-aks \
+    -v ${DIR}:/workspace:z \
+    -e ARM_TENANT_ID=${ARM_TENANT_ID} \
+    -e ARM_SUBSCRIPTION_ID=${ARM_SUBSCRIPTION_ID} \
+    -e ARM_CLIENT_ID=${ARM_CLIENT_ID} \
+    -e ARM_CLIENT_SECRET=${ARM_CLIENT_SECRET} \
+    quay.io/rhqp/mapt:v0.7.0-dev azure \
+        aks create \
+        --project-name ${MAPT_AKS_PROJECT_NAME} \
+        --backed-url "file:///workspace" \
+        --conn-details-output "/workspace" \
+        --spot
+  podman logs -f create-aks
+}
+
+mapt_destroy_aks_cluster() {
+  podman run -d --rm --platform linux/amd64 --name destroy-aks \
+  -v ${DIR}:/workspace:z \
+  -e ARM_TENANT_ID=${ARM_TENANT_ID} \
+  -e ARM_SUBSCRIPTION_ID=${ARM_SUBSCRIPTION_ID} \
+  -e ARM_CLIENT_ID=${ARM_CLIENT_ID} \
+  -e ARM_CLIENT_SECRET=${ARM_CLIENT_SECRET} \
+  quay.io/rhqp/mapt:v0.7.0-dev azure \
+      aks destroy \
+      --project-name ${MAPT_AKS_PROJECT_NAME} \
+      --backed-url "file:///workspace" 
+  podman logs -f destroy-aks
+}
+
 check_and_test() {
   local release_name=$1
   local namespace=$2
@@ -397,21 +430,8 @@ main() {
   install_oc
 
   if [[ "$JOB_NAME" == *aks* ]]; then
-    podman run -d --rm --name create-aks \
-      -v ${DIR}:/workspace:z \
-      -e ARM_TENANT_ID=${ARM_TENANT_ID} \
-      -e ARM_SUBSCRIPTION_ID=${ARM_SUBSCRIPTION_ID} \
-      -e ARM_CLIENT_ID=${ARM_CLIENT_ID} \
-      -e ARM_CLIENT_SECRET=${ARM_CLIENT_SECRET} \
-      quay.io/rhqp/mapt:v0.7.0-dev azure \
-          aks create \
-          --project-name ${MAPT_AKS_PROJECT_NAME} \
-          --backed-url "file:///workspace" \
-          --conn-details-output "/workspace" \
-          --enable-app-routing \
-          --spot
-    podman logs -f create-aks
-    export KUBECONFIG="kubeconfig"
+    mapt_create_aks_cluster
+      export KUBECONFIG="kubeconfig"
   else
     oc login --token="${K8S_CLUSTER_TOKEN}" --server="${K8S_CLUSTER_URL}" --insecure-skip-tls-verify
   fi
@@ -437,19 +457,6 @@ main() {
     check_and_test "${RELEASE_NAME_RBAC}" "${NAME_SPACE_RBAC}"
   fi
 
-  if [[ "$JOB_NAME" == *aks* ]]; then
-    podman run -d --rm --name destroy-aks \
-    -v ${DIR}:/workspace:z \
-    -e ARM_TENANT_ID=${ARM_TENANT_ID} \
-    -e ARM_SUBSCRIPTION_ID=${ARM_SUBSCRIPTION_ID} \
-    -e ARM_CLIENT_ID=${ARM_CLIENT_ID} \
-    -e ARM_CLIENT_SECRET=${ARM_CLIENT_SECRET} \
-    quay.io/rhqp/mapt:v0.7.0-dev azure \
-        aks destroy \
-        --project-name ${MAPT_AKS_PROJECT_NAME} \
-        --backed-url "file:///workspace" 
-    podman logs -f destroy-aks
-  fi
   exit "${OVERALL_RESULT}"
 }
 
